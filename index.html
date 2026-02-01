@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Spreadsheet Encryption</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/quikchat/dist/quikchat.css"
+    />
+    <link
+      rel="stylesheet"
+      href="./spreadsheet.css"
+    />
+
+    <script src="https://unpkg.com/xlsx"></script>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "@openai/agents": "https://esm.sh/@openai/agents@latest",
+          "zod": "https://esm.sh/zod@4",
+          "@openai": "https://esm.sh/openai@4"
+        }
+      }
+    </script>
+    <script src="https://unpkg.com/quikchat"></script>
+    <script type="module" src='index.js'> </script>
+    <style>
+      html,
+      body {
+        height: 100%;
+        padding: 0px;
+        margin: 0px;
+      }
+
+      #chat {
+        max-width: 1000px; 
+        width: 100%; 
+        height: 100%;
+        margin: 0 auto;
+      }
+
+      .quikchat-base {
+        border: none !important;
+      }
+
+      .quikchat-message {
+        line-height: 24px;
+        font-family: ui-sans-serif, system-ui;
+
+        &.right-singleline {
+          .quikchat-message-content {
+            display: inline-block;
+          }
+        }
+        &.right-singleline, &.right-multiline {
+          background-color: initial !important;
+          .quikchat-message-content {
+            background-color: #eeeeeee9;
+            padding: 6px 16px !important;
+            border-radius: 0.5em;
+          }
+        }
+      }
+      .quikchat-message-content {
+        white-space: normal;
+        ul {
+          padding-left: 2em;
+        }
+      }
+
+      .quikchat-user-label {
+        display: none;
+      }
+
+      .quikchat-input-area {
+        min-height: 150px;
+        display: grid;
+        grid-gap: 10px;
+        grid-template-columns: 1fr auto;
+        grid-template-rows: auto auto;
+      }
+
+      textarea {
+        grid-row: 1 / span 2;
+      }
+
+      .clear-btn {
+        background-color: #ca2020 !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="chat">
+    </div>
+  </body>
+</html>

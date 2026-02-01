@@ -1,0 +1,7 @@
+{
+  "type": "module",
+  "dependencies": {
+    "homomorphicjs": "^1.1.2",
+    "paillier-bigint": "^3.4.3"
+  }
+}
