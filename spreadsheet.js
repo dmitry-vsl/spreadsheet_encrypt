@@ -1,3 +1,5 @@
+import { encrypt } from './encrypt.js';
+
 const SPREADSHEET_EXTENSIONS = [".csv", ".xlsx", ".xls", ".ods", ".tsv"];
 const SPREADSHEET_MIMES = [
   "text/csv",
@@ -7,7 +9,7 @@ const SPREADSHEET_MIMES = [
   "text/tab-separated-values",
 ];
 
-// State: { fileName -> { sheetName -> { headers: string[], rows: string[][], selected: Set<string> } } }
+// State: { fileName -> { file: File, sheets: { sheetName -> { headers: string[], previewRows: string[][], selected: Set<string> } } } }
 const state = {};
 
 // ── Build DOM ─────────────────────────────────────────────────────
@@ -35,7 +37,7 @@ function buildDOM(dropZone) {
 
   const applyBtn = document.createElement("button");
   applyBtn.className = "ss-apply-btn";
-  applyBtn.textContent = "Get Selected Columns";
+  applyBtn.textContent = "Import Spreadsheets";
   modalContent.appendChild(applyBtn);
 
   modalOverlay.appendChild(modalContent);
@@ -106,10 +108,10 @@ export function mount(dropZone) {
     if (!files.length) return;
 
     const parsed = await Promise.all(files.map(parseSpreadsheet));
-    parsed.forEach(({ name, sheets }) => {
-      state[name] = {};
+    parsed.forEach(({ name, file, sheets }) => {
+      state[name] = { file, sheets: {} };
       sheets.forEach(({ sheetName, headers, previewRows }) => {
-        state[name][sheetName] = {
+        state[name].sheets[sheetName] = {
           headers,
           previewRows,
           selected: new Set(),
@@ -140,7 +142,7 @@ export function mount(dropZone) {
             return { sheetName, headers, previewRows };
           });
 
-          resolve({ name: file.name, sheets });
+          resolve({ name: file.name, file, sheets });
         } catch (err) {
           reject(err);
         }
@@ -164,7 +166,7 @@ export function mount(dropZone) {
       const card = document.createElement("div");
       card.className = "ss-file-card";
 
-      const sheetEntries = Object.entries(state[fileName]);
+      const sheetEntries = Object.entries(state[fileName].sheets);
       const sheetCount = sheetEntries.length;
 
       const header = document.createElement("div");
@@ -293,19 +295,101 @@ export function mount(dropZone) {
 
   // ── Apply button ────────────────────────────────────────────────
 
-  els.applyBtn.addEventListener("click", () => {
-    const result = {};
-    for (const [fileName, sheets] of Object.entries(state)) {
-      result[fileName] = {};
+  els.applyBtn.addEventListener("click", async () => {
+    // Collect selection info
+    const selection = {};
+    for (const [fileName, { sheets }] of Object.entries(state)) {
       for (const [sheetName, { selected }] of Object.entries(sheets)) {
         if (selected.size) {
-          result[fileName][sheetName] = Array.from(selected);
+          if (!selection[fileName]) selection[fileName] = {};
+          selection[fileName][sheetName] = Array.from(selected);
         }
       }
-      if (!Object.keys(result[fileName]).length) delete result[fileName];
     }
-    console.log("Columns selected for encryption:", result);
-    alert("Selection logged to console.\n\n" + JSON.stringify(result, null, 2));
+    if (!Object.keys(selection).length) {
+      alert("No columns selected.");
+      return;
+    }
+
+    for (const [fileName, sheetSel] of Object.entries(selection)) {
+      const { file } = state[fileName];
+
+      const buf = await file.arrayBuffer();
+      const workbook = XLSX.read(new Uint8Array(buf), { type: "array" });
+
+      for (const [sheetName, columns] of Object.entries(sheetSel)) {
+        const sheet = workbook.Sheets[sheetName];
+        if (!sheet) throw new Error(`Sheet "${sheetName}" not found in ${fileName}`);
+
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        if (rows.length === 0) continue;
+
+        const headers = rows[0];
+        const colIndices = columns.map((col) => {
+          const idx = headers.indexOf(col);
+          if (idx === -1) throw new Error(`Column "${col}" not found in sheet "${sheetName}" of ${fileName}`);
+          return idx;
+        });
+
+        // Validate all values in selected columns are integers
+        for (let r = 1; r < rows.length; r++) {
+          const row = rows[r];
+          for (const ci of colIndices) {
+            const val = row[ci];
+            if (val == null || val === "") continue;
+            if (typeof val === "number") {
+              if (!Number.isInteger(val)) {
+                throw new Error(
+                  `Non-integer number "${val}" in column "${columns[colIndices.indexOf(ci)]}", row ${r + 1}, sheet "${sheetName}", file "${fileName}"`
+                );
+              }
+            } else if (typeof val === "string") {
+              if (!/^\d+$/.test(val)) {
+                throw new Error(
+                  `Value "${val}" cannot be safely converted to integer in column "${columns[colIndices.indexOf(ci)]}", row ${r + 1}, sheet "${sheetName}", file "${fileName}"`
+                );
+              }
+            } else {
+              throw new Error(
+                `Unexpected value type "${typeof val}" in column "${columns[colIndices.indexOf(ci)]}", row ${r + 1}, sheet "${sheetName}", file "${fileName}"`
+              );
+            }
+          }
+        }
+
+        // Encrypt values and write back to the sheet
+        for (let r = 1; r < rows.length; r++) {
+          const row = rows[r];
+          for (const ci of colIndices) {
+            const val = row[ci];
+            if (val == null || val === "") continue;
+            const numVal = typeof val === "number" ? val : Number(val);
+            const encrypted = encrypt(numVal);
+            const cellAddr = XLSX.utils.encode_cell({ r, c: ci });
+            sheet[cellAddr] = { t: "s", v: encrypted };
+          }
+        }
+      }
+
+      // Generate and download the modified file
+      const ext = fileName.toLowerCase();
+      let bookType = "xlsx";
+      if (ext.endsWith(".csv")) bookType = "csv";
+      else if (ext.endsWith(".xls")) bookType = "xls";
+      else if (ext.endsWith(".ods")) bookType = "ods";
+      else if (ext.endsWith(".tsv")) bookType = "csv";
+
+      const outData = XLSX.write(workbook, { bookType, type: "array" });
+      const blob = new Blob([outData], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    closeModal();
   });
 
   return { handleSpreadsheets };
