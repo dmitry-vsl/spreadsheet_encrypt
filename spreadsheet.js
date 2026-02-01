@@ -81,14 +81,14 @@ export function mount(dropZone) {
   document.addEventListener("drop", (e) => {
     e.preventDefault();
     els.dropZone.classList.remove("ss-drag-over");
-    handleFiles(e.dataTransfer.files);
+    handleSpreadsheets(e.dataTransfer.files);
   });
 
   document.addEventListener("paste", (e) => {
     const files = e.clipboardData && e.clipboardData.files;
     if (files && files.length) {
       e.preventDefault();
-      handleFiles(files);
+      handleSpreadsheets(files);
     }
   });
 
@@ -101,7 +101,7 @@ export function mount(dropZone) {
     return false;
   }
 
-  async function handleFiles(fileList) {
+  async function handleSpreadsheets(fileList) {
     const files = Array.from(fileList).filter(isSpreadsheet);
     if (!files.length) return;
 
@@ -307,6 +307,8 @@ export function mount(dropZone) {
     console.log("Columns selected for encryption:", result);
     alert("Selection logged to console.\n\n" + JSON.stringify(result, null, 2));
   });
+
+  return { handleSpreadsheets };
 }
 
 // ── Helpers ─────────────────────────────────────────────────────

@@ -87,7 +87,7 @@ window.chat = chat = new quikchat("#chat", async (instance, message) => {
 
 const textarea = document.getElementsByTagName('textarea')[0]
 textarea.focus()
-mount(textarea)
+const { handleSpreadsheets } = mount(textarea)
 
 const chatHistory = localStorage.chatHistory
 if(chatHistory) {
@@ -110,4 +110,22 @@ clearButton.onclick = function() {
   chat.historyClear()
   delete localStorage.chatHistory
   addWelcomeMessage()
+}
+
+const importButton = document.createElement('button')
+importButton.innerHTML = 'Import spreadsheets'
+importButton.classList.toggle('quikchat-input-send-btn')
+document.querySelector('.quikchat-input-area').insertBefore(
+  importButton,
+  document.querySelector('.quikchat-input-send-btn'),
+)
+importButton.onclick = function() {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.multiple = true
+  input.accept = '.csv,.xlsx,.xls,.ods,.tsv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.oasis.opendocument.spreadsheet,text/tab-separated-values'
+  input.onchange = () => {
+    if (input.files.length) handleSpreadsheets(input.files)
+  }
+  input.click()
 }
