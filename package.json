@@ -1,7 +1,7 @@
 {
   "type": "module",
   "dependencies": {
-    "homomorphicjs": "^1.1.2",
+    "openai": "^6.17.0",
     "paillier-bigint": "^3.4.3"
   }
 }

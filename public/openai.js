@@ -12,7 +12,7 @@ export async function streamCompletion(history, message, onContent, { files } = 
   if (files?.length) {
     fileIds = await Promise.all(
       files.map(async ({ name, blob }) => {
-        const file = new File([blob], name);
+        const file = new File([blob], name, { type: "text/csv" });
         const uploaded = await client.files.create({
           file,
           purpose: "assistants",
@@ -22,26 +22,23 @@ export async function streamCompletion(history, message, onContent, { files } = 
     );
   }
 
-  const tools = fileIds?.length ? [{ type: "code_interpreter" }] : undefined;
+  const tools = fileIds?.length 
+    ? [
+        { 
+          type: "code_interpreter", 
+          container: { type: "auto" },
+          file_ids: fileIds,
+        }
+      ] 
+    : undefined;
 
   const input = [
     ...history,
-    fileIds?.length
-      ? {
-          role: "user",
-          content: [
-            { type: "input_text", text: message },
-            ...fileIds.map(id => ({
-              type: "input_file",
-              file_id: id,
-            })),
-          ],
-        }
-      : { role: "user", content: message },
+    { role: "user", content: message },
   ];
 
   const stream = await client.responses.create({
-    model: "gpt-4.1",
+    model: "gpt-5.2",
     input,
     tools,
     stream: true,
@@ -56,3 +53,17 @@ export async function streamCompletion(history, message, onContent, { files } = 
   }
   return content;
 }
+
+/*
+const name = '1.csv'
+const blob = new Blob(
+  ["Foo, bar"],
+  { type: "text/csv" }
+);
+const file = new File([blob], name, { type: "text/csv" });
+const uploaded = await client.files.create({
+  file,
+  purpose: "assistants",
+});
+console.log('id',  uploaded.id)
+*/
