@@ -13,13 +13,6 @@ const state = {};
 // ── Build DOM ─────────────────────────────────────────────────────
 
 function buildDOM(dropZone) {
-  const fileInput = document.createElement("input");
-  fileInput.type = "file";
-  fileInput.multiple = true;
-  fileInput.accept = ".csv,.xlsx,.xls,.ods,.tsv";
-  fileInput.hidden = true;
-  dropZone.appendChild(fileInput);
-
   // Modal
   const modalOverlay = document.createElement("div");
   modalOverlay.className = "ss-modal-overlay";
@@ -48,7 +41,7 @@ function buildDOM(dropZone) {
   modalOverlay.appendChild(modalContent);
   document.body.appendChild(modalOverlay);
 
-  return { dropZone, fileInput, modalOverlay, modalClose, resultsEl, applyBtn };
+  return { dropZone, modalOverlay, modalClose, resultsEl, applyBtn };
 }
 
 // ── Mount ─────────────────────────────────────────────────────────
@@ -89,11 +82,6 @@ export function mount(dropZone) {
     e.preventDefault();
     els.dropZone.classList.remove("ss-drag-over");
     handleFiles(e.dataTransfer.files);
-  });
-
-  els.fileInput.addEventListener("change", () => {
-    handleFiles(els.fileInput.files);
-    els.fileInput.value = "";
   });
 
   document.addEventListener("paste", (e) => {
