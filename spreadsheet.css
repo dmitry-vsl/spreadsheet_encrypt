@@ -96,6 +96,34 @@
   width: 100%;
 }
 .ss-apply-btn:hover { background: #2563eb; }
+.ss-preview-wrap {
+  overflow-x: auto;
+  padding: 0 16px 12px;
+}
+.ss-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 4px;
+}
+.ss-preview-table th,
+.ss-preview-table td {
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  text-align: left;
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ss-preview-table th {
+  background: #f1f5f9;
+  font-weight: 600;
+  color: #475569;
+}
+.ss-preview-table tbody tr:hover {
+  background: #f8fafc;
+}
 .ss-empty-sheet {
   padding: 16px 20px;
   color: #94a3b8;

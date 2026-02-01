@@ -7,7 +7,7 @@ const SPREADSHEET_MIMES = [
   "text/tab-separated-values",
 ];
 
-// State: { fileName -> { sheetName -> { headers: string[], selected: Set<string> } } }
+// State: { fileName -> { sheetName -> { headers: string[], rows: string[][], selected: Set<string> } } }
 const state = {};
 
 // ── Build DOM ─────────────────────────────────────────────────────
@@ -120,9 +120,10 @@ export function mount(dropZone) {
     const parsed = await Promise.all(files.map(parseSpreadsheet));
     parsed.forEach(({ name, sheets }) => {
       state[name] = {};
-      sheets.forEach(({ sheetName, headers }) => {
+      sheets.forEach(({ sheetName, headers, previewRows }) => {
         state[name][sheetName] = {
           headers,
+          previewRows,
           selected: new Set(),
         };
       });
@@ -145,7 +146,10 @@ export function mount(dropZone) {
             const headers = rows.length
               ? rows[0].map((h) => (h != null ? String(h) : ""))
               : [];
-            return { sheetName, headers };
+            const previewRows = rows.slice(1, 5).map((row) =>
+              headers.map((_, i) => (row[i] != null ? String(row[i]) : ""))
+            );
+            return { sheetName, headers, previewRows };
           });
 
           resolve({ name: file.name, sheets });
@@ -182,7 +186,7 @@ export function mount(dropZone) {
         ` <span class="ss-badge">${sheetCount} sheet${sheetCount !== 1 ? "s" : ""}</span>`;
       card.appendChild(header);
 
-      sheetEntries.forEach(([sheetName, { headers, selected }]) => {
+      sheetEntries.forEach(([sheetName, { headers, previewRows, selected }]) => {
         const section = document.createElement("div");
         section.className = "ss-sheet-section";
 
@@ -232,6 +236,40 @@ export function mount(dropZone) {
         });
 
         section.appendChild(grid);
+
+        // Preview table (header + up to 4 data rows = 5 rows total)
+        if (headers.length && previewRows.length) {
+          const tableWrap = document.createElement("div");
+          tableWrap.className = "ss-preview-wrap";
+
+          const table = document.createElement("table");
+          table.className = "ss-preview-table";
+
+          const thead = document.createElement("thead");
+          const headTr = document.createElement("tr");
+          headers.forEach((col, i) => {
+            const th = document.createElement("th");
+            th.textContent = col || `(Column ${i + 1})`;
+            headTr.appendChild(th);
+          });
+          thead.appendChild(headTr);
+          table.appendChild(thead);
+
+          const tbody = document.createElement("tbody");
+          previewRows.forEach((row) => {
+            const tr = document.createElement("tr");
+            row.forEach((cell) => {
+              const td = document.createElement("td");
+              td.textContent = cell;
+              tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+          });
+          table.appendChild(tbody);
+
+          tableWrap.appendChild(table);
+          section.appendChild(tableWrap);
+        }
 
         const actions = document.createElement("div");
         actions.className = "ss-sheet-actions";
