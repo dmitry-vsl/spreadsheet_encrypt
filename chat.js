@@ -1,5 +1,6 @@
 import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js"
 import { mount } from './spreadsheet.js'
+import { streamCompletion } from './openai.js'
 window.addEventListener("error", (e) => {
   console.error(e);
   alert(e.message);
@@ -34,8 +35,8 @@ window.chat = chat = new quikchat("#chat", async (instance, message) => {
     .historyGet()
     .filter(msg => msg.userID != 0) // drop ui-only messages
     .map((msg) => ({
-      text: msg.content,
-      role: msg.align == "left" ? "model" : "user",
+      content: msg.content,
+      role: msg.align == "left" ? "assistant" : "user",
     }));
 
   // Echo user message
@@ -43,46 +44,12 @@ window.chat = chat = new quikchat("#chat", async (instance, message) => {
 
   const msgId = chat.messageAddNew("...", "Bot", "left");
 
-  let content = ''
-  //chat.setSanitizer(content => marked.parse(content))
 
-  let abort = new AbortController();
-  let res = await fetch("./chat_completions", {
-    method: "POST",
-    signal: abort.signal,
-    body: JSON.stringify({
-      text: message,
-      history,
-    }),
+  await streamCompletion(history, message, (content) => {
+    chat.messageReplaceContent(msgId, marked.parse(content))
   });
 
-  if (res.ok) {
-    let stream = events(res, abort.signal);
-    for await (let event of stream) {
-      if (event.event == "message") {
-        const data = JSON.parse(event.data);
-        content += data.text
-        chat.messageReplaceContent(msgId, marked.parse(content))
-      } else if (event.event == "done") {
-        saveHistory()
-      } else if (event.event == "search_results") {
-        /* Skip because the model outputs result itself
-        const data = JSON.parse(event.data)
-        content = "Found the following audits:<br><ul>"
-        for (const audit of data.search_results) {
-          content += `<li><a href='${audit.url}'>${audit.full_name}</a></li>`
-        }
-        content += '</ul>'
-        chat.messageReplaceContent(msgId, content)
-        */
-      } else {
-        throw new Error("illegal event type: " + event.type);
-      }
-    }
-  } else {
-    console.error("response", res);
-    throw new Error("Invalid response: status " + res.status);
-  }
+  saveHistory();
 });
 
 const textarea = document.getElementsByTagName('textarea')[0]
