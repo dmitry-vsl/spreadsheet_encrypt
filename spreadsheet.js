@@ -45,7 +45,7 @@ function buildDOM(dropZone) {
 
 // ── Mount ─────────────────────────────────────────────────────────
 
-export function mount(dropZone) {
+export function mount(dropZone, { onSpreadsheetsReady } = {}) {
   const els = buildDOM(dropZone);
 
   // ── Modal controls ──────────────────────────────────────────────
@@ -294,6 +294,7 @@ export function mount(dropZone) {
 
     const onApply = async () => {
       // Collect selection info
+      const encryptedFiles = [];
       const selection = {};
       for (const [fileName, { sheets }] of Object.entries(state)) {
         for (const [sheetName, { selected }] of Object.entries(sheets)) {
@@ -368,7 +369,7 @@ export function mount(dropZone) {
           }
         }
 
-        // Generate and download the modified file
+        // Generate the modified file
         const ext = fileName.toLowerCase();
         let bookType = "xlsx";
         if (ext.endsWith(".csv")) bookType = "csv";
@@ -378,14 +379,12 @@ export function mount(dropZone) {
 
         const outData = XLSX.write(workbook, { bookType, type: "array" });
         const blob = new Blob([outData], { type: "application/octet-stream" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = fileName;
-        a.click();
-        URL.revokeObjectURL(url);
+        encryptedFiles.push({ name: fileName, blob });
       }
 
+      if (onSpreadsheetsReady) {
+        onSpreadsheetsReady(encryptedFiles);
+      }
       closeModal();
     };
 

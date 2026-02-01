@@ -1,7 +1,8 @@
 - add google auth and server
 - хранить ключи в localStorage, чтобы файлы можно было расшифровывать после рефреша страницы?
 - потестировать пустые значения
-- add a currentSpreadsheets variable to module chat.js. Add function onSpreadsheet addded function to chat.js. It should                       
-  - populate the currentSpreadsheets variable                                                                                                  
-  - display a list of spreadsheet files on top of an input                                                                                     
-  - when the user submits a message   
+- no columns selected - ошибка?
+- по клику на название таблицы над полем ввода, показывать превью
+- позволять загружать несколько таблиц
+- Позволять менять зашифрованные колонки после загрузки
+- log thinking

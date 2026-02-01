@@ -11,6 +11,7 @@ window.addEventListener("unhandledrejection", (e) => {
 });
 
 let chat
+let currentSpreadsheets
 
 function addWelcomeMessage() {
   chat.messageAddFull({
@@ -30,6 +31,37 @@ function saveHistory() {
   localStorage['chatHistory'] = JSON.stringify(cleanHistory)
 }
 
+function onSpreadsheetsAdded(spreadsheets) {
+  currentSpreadsheets = spreadsheets
+  renderSpreadsheetList()
+}
+
+function renderSpreadsheetList() {
+  let listEl = document.getElementById('spreadsheet-list')
+  if (!listEl) {
+    listEl = document.createElement('div')
+    listEl.id = 'spreadsheet-list'
+    listEl.style.cssText = 'padding: 6px 10px; background: #f0f4f8; border-radius: 6px; margin-bottom: 6px; font-family: ui-sans-serif, system-ui; font-size: 13px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;'
+    const inputArea = document.querySelector('.quikchat-input-area')
+    inputArea.parentNode.insertBefore(listEl, inputArea)
+  }
+  listEl.innerHTML = ''
+  if (!currentSpreadsheets?.length) {
+    listEl.remove()
+    return
+  }
+  const label = document.createElement('span')
+  label.textContent = 'Attached:'
+  label.style.cssText = 'font-weight: 600; color: #555;'
+  listEl.appendChild(label)
+  for (const file of currentSpreadsheets) {
+    const chip = document.createElement('span')
+    chip.textContent = file.name
+    chip.style.cssText = 'background: #dce6f0; padding: 2px 8px; border-radius: 4px; color: #333;'
+    listEl.appendChild(chip)
+  }
+}
+
 window.chat = chat = new quikchat("#chat", async (instance, message) => {
   const history = chat
     .historyGet()
@@ -44,17 +76,25 @@ window.chat = chat = new quikchat("#chat", async (instance, message) => {
 
   const msgId = chat.messageAddNew("...", "Bot", "left");
 
+  // Grab attached spreadsheets and clear them
+  const files = currentSpreadsheets
+  if (files?.length) {
+    currentSpreadsheets = undefined
+    renderSpreadsheetList()
+  }
 
   await streamCompletion(history, message, (content) => {
     chat.messageReplaceContent(msgId, marked.parse(content))
-  });
+  }, { files });
 
   saveHistory();
 });
 
 const textarea = document.getElementsByTagName('textarea')[0]
 textarea.focus()
-const { handleSpreadsheets } = mount(textarea)
+const { handleSpreadsheets } = mount(textarea, {
+  onSpreadsheetsReady: onSpreadsheetsAdded,
+})
 
 const chatHistory = localStorage.chatHistory
 if(chatHistory) {
@@ -76,6 +116,8 @@ document.querySelector('.quikchat-input-area').insertBefore(
 clearButton.onclick = function() {
   chat.historyClear()
   delete localStorage.chatHistory
+  currentSpreadsheets = undefined
+  renderSpreadsheetList()
   addWelcomeMessage()
 }
 
