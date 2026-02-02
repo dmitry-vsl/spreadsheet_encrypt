@@ -112,7 +112,7 @@ export function mount(dropZone, { onSpreadsheetsReady } = {}) {
         state[name].sheets[sheetName] = {
           headers,
           previewRows,
-          selected: new Set(),
+          encrypted: new Set(),
         };
       });
     });
@@ -174,7 +174,7 @@ export function mount(dropZone, { onSpreadsheetsReady } = {}) {
         ` <span class="ss-badge">${sheetCount} sheet${sheetCount !== 1 ? "s" : ""}</span>`;
       card.appendChild(header);
 
-      sheetEntries.forEach(([sheetName, { headers, previewRows, selected }]) => {
+      sheetEntries.forEach(([sheetName, { headers, previewRows, encrypted }]) => {
         const section = document.createElement("div");
         section.className = "ss-sheet-section";
 
@@ -207,10 +207,10 @@ export function mount(dropZone, { onSpreadsheetsReady } = {}) {
           const cb = document.createElement("input");
           cb.type = "checkbox";
           cb.id = id;
-          cb.checked = selected.has(col);
+          cb.checked = encrypted.has(col);
           cb.addEventListener("change", () => {
-            if (cb.checked) selected.add(col);
-            else selected.delete(col);
+            if (cb.checked) encrypted.add(col);
+            else encrypted.delete(col);
           });
 
           const label = document.createElement("label");
@@ -266,7 +266,7 @@ export function mount(dropZone, { onSpreadsheetsReady } = {}) {
         selAll.className = "ss-btn-sm";
         selAll.textContent = "Select all";
         selAll.addEventListener("click", () => {
-          headers.forEach((h) => selected.add(h));
+          headers.forEach((h) => encrypted.add(h));
           render(state);
         });
 
@@ -274,7 +274,7 @@ export function mount(dropZone, { onSpreadsheetsReady } = {}) {
         selNone.className = "ss-btn-sm";
         selNone.textContent = "Select none";
         selNone.addEventListener("click", () => {
-          selected.clear();
+          encrypted.clear();
           render(state);
         });
 
@@ -296,10 +296,10 @@ export function mount(dropZone, { onSpreadsheetsReady } = {}) {
       // Collect selection info
       const selection = {};
       for (const [fileName, { sheets }] of Object.entries(state)) {
-        for (const [sheetName, { selected }] of Object.entries(sheets)) {
-          if (selected.size) {
+        for (const [sheetName, { encrypted }] of Object.entries(sheets)) {
+          if (encrypted.size) {
             if (!selection[fileName]) selection[fileName] = {};
-            selection[fileName][sheetName] = Array.from(selected);
+            selection[fileName][sheetName] = Array.from(encrypted);
           }
         }
       }
@@ -328,7 +328,7 @@ export function mount(dropZone, { onSpreadsheetsReady } = {}) {
             return idx;
           });
 
-          // Validate all values in selected columns are integers
+          // Validate all values in encrypted columns are integers
           for (let r = 1; r < rows.length; r++) {
             const row = rows[r];
             for (const ci of colIndices) {
