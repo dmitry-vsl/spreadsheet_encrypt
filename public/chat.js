@@ -1,7 +1,7 @@
 import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js"
 import { mount } from './spreadsheet.js'
-import { createThread, createAndRunMessage } from './openai.js'
-import { publicKey } from './encrypt.js'
+import { streamCompletion } from './openai.js'
+import { publicKey, decrypt } from './encrypt.js'
 window.addEventListener("error", (e) => {
   console.error(e);
   alert(e.message);
@@ -13,7 +13,6 @@ window.addEventListener("unhandledrejection", (e) => {
 
 let chat
 let currentSpreadsheets
-let threadId
 
 function addWelcomeMessage() {
   chat.messageAddFull({
@@ -27,7 +26,7 @@ function addWelcomeMessage() {
 function saveHistory() {
   // Remove DOM references before saving
   const cleanHistory = chat.historyGetAllCopy().map(msg => {
-    const { messageDiv, ...cleanMsg } = msg;
+    const {...cleanMsg } = msg;
     return cleanMsg
   });
   localStorage['chatHistory'] = JSON.stringify(cleanHistory)
@@ -65,8 +64,22 @@ function renderSpreadsheetList() {
   }
 }
 
-window.chat = chat = new quikchat("#chat", async (instance, message) => {
-  threadId = localStorage.threadId && parseInt(localStorage.threadId)
+function parseAndDecrypt(text) {
+  return text.replace(/<encrypted>([\s\S]*?)<\/encrypted>/g, (_, str) => {
+    if(!/^\d+$/.test(str)) {
+      console.error('malformed encrypted value', str)
+      throw new Error('malformed encrypted value')
+    }
+    return decrypt(BigInt(str)).toString()
+  });
+}
+
+/* TODO remove
+console.log(parseAndDecrypt(`<p>Total GDP (billion USD):<br><encrypted>141238182061617681078106244253578972631554812039859952480297182248580457614305739618053493707571377352417496759993125130053007283396359175700564715626696426742784898739127758915407514819536555846017631698423644015547967930511642627893987169222533605004948745186382448886317352167646913508906359456000815784607</encrypted></p>
+`))
+*/
+
+window.chat = chat = new window.quikchat("#chat", async (instance, message) => {
   const history = chat
     .historyGet()
     .filter(msg => msg.userID != 0) // drop ui-only messages
@@ -100,24 +113,16 @@ window.chat = chat = new quikchat("#chat", async (instance, message) => {
     console.error('message', message)
   }
 
-  if(threadId == null) {
-    threadId = await createThread()
-    console.error({threadId})
-  }
-
-  const messages = await createAndRunMessage(
-    threadId, 
+  await streamCompletion(
+    history, 
     message, 
-    files && Object.values(files).map(f => f.encryptedFile),
-  )
-  const lastMessage = messages.at(-1)
-  if(lastMessage.content.length != 1) {
-    console.error(lastMessage.content)
-    throw new Error('unexpected content length for a message')
-  }
-  const content = lastMessage.content[0].text.value
-
-  chat.messageReplaceContent(msgId, marked.parse(content))
+    (content) => {
+      chat.messageReplaceContent(msgId, marked.parse(parseAndDecrypt(content)))
+    }, 
+    { 
+    files: files && Object.values(files).map(f => f.encryptedFile),
+    }
+  );
 
   saveHistory();
 });
@@ -147,7 +152,6 @@ document.querySelector('.quikchat-input-area').insertBefore(
 )
 clearButton.onclick = function() {
   chat.historyClear()
-  threadId = undefined
   delete localStorage.chatHistory
   currentSpreadsheets = undefined
   renderSpreadsheetList()

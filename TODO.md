@@ -1,3 +1,10 @@
+- надо ли поддерживать загрузку нескольких спредшитов?
+- выдавать название файла как оно представлено в контейнере
+- wrap names of encrypted sheets and columns with quotes
+- test encrypted value length
+- remove assistants API functions
+- Use conversations? Otherwise it cannot analyze files referenced in prev messages
+- show warning when no columns encrypted
 - TODO expand prompt, more explanations on using lightphe
 - не конвертировать в CSV
 - create assistant with instructions

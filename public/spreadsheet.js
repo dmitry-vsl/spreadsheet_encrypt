@@ -126,11 +126,11 @@ export function mount(dropZone, { onSpreadsheetsReady } = {}) {
       reader.onload = (e) => {
         try {
           const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: "array" });
+          const workbook = window.XLSX.read(data, { type: "array" });
 
           const sheets = workbook.SheetNames.map((sheetName) => {
             const sheet = workbook.Sheets[sheetName];
-            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            const rows = window.XLSX.utils.sheet_to_json(sheet, { header: 1 });
             const headers = rows.length
               ? rows[0].map((h) => (h != null ? String(h) : ""))
               : [];
@@ -312,13 +312,13 @@ export function mount(dropZone, { onSpreadsheetsReady } = {}) {
         const { file } = state[fileName];
 
         const buf = await file.arrayBuffer();
-        const workbook = XLSX.read(new Uint8Array(buf), { type: "array" });
+        const workbook = window.XLSX.read(new Uint8Array(buf), { type: "array" });
 
         for (const [sheetName, columns] of Object.entries(sheetSel)) {
           const sheet = workbook.Sheets[sheetName];
           if (!sheet) throw new Error(`Sheet "${sheetName}" not found in ${fileName}`);
 
-          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+          const rows = window.XLSX.utils.sheet_to_json(sheet, { header: 1 });
           if (rows.length === 0) continue;
 
           const headers = rows[0];
@@ -362,7 +362,7 @@ export function mount(dropZone, { onSpreadsheetsReady } = {}) {
               if (val == null || val === "") continue;
               const numVal = typeof val === "number" ? val : Number(val);
               const encrypted = encrypt(numVal);
-              const cellAddr = XLSX.utils.encode_cell({ r, c: ci });
+              const cellAddr = window.XLSX.utils.encode_cell({ r, c: ci });
               sheet[cellAddr] = { t: "s", v: encrypted };
             }
           }
@@ -376,7 +376,7 @@ export function mount(dropZone, { onSpreadsheetsReady } = {}) {
         else if (ext.endsWith(".ods")) bookType = "ods";
         else if (ext.endsWith(".tsv")) bookType = "csv";
 
-        const outData = XLSX.write(workbook, { bookType, type: "array" });
+        const outData = window.XLSX.write(workbook, { bookType, type: "array" });
         const blob = new Blob([outData], { type: "application/octet-stream" });
         state[fileName].encryptedFile = { name: fileName, blob };
       }

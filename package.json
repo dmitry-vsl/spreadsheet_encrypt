@@ -5,6 +5,10 @@
     "paillier-bigint": "^3.4.3"
   },
   "devDependencies": {
-    "eslint": "^9.39.2"
+    "eslint": "^9.39.2",
+    "eslint-formatter-unix": "^9.0.1"
+  },
+  "scripts": {
+    "lint": "npx eslint ."
   }
 }
