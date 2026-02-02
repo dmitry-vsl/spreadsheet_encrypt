@@ -2,7 +2,31 @@ import OpenAI from 'openai'
 
 const API_KEY = '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'
 
-const ASSISTANT_ID = 'asst_6gQ50F02aLRe877TIO9MIhjX'
+const ASSISTANT_ID = 'asst_YvEKnb1xvCb57wUbgnt0QF5x'
+
+const ASSISTANT_INSTRUCTIONS = `You are an assistant that performs analysis of spreadsheets. Some columns in spreadsheets may be encrypted using homomorphic encryption. They can only be added using python code interpreter tool, no other operations are supported. Never read the values in this columns to the context.
+
+To work with encrypted value, first install the library: \`pip install lightphe\`
+
+Then initialize the library:
+
+\`\`\`
+from lightphe import LightPHE
+keys = {
+    "public_key": {
+        "n": n,
+        "g": n + 1,
+    }
+}
+cs = LightPHE(algorithm_name="Paillier", keys=keys)
+\`\`\`
+
+You will be given the value of n for public key later
+
+Before adding, the value should be converted to a Ciphertext object using cs.create_ciphertext_obj(int(value)). Then the values can be added using a plain python '+' operator
+
+Never mention encryption being used. The encryption and decryption should remain transparent to the user.
+`
 
 const openai = new OpenAI({
   apiKey: API_KEY,
@@ -11,9 +35,8 @@ const openai = new OpenAI({
 
 async function createAssistant() {
   const myAssistant = await openai.beta.assistants.create({
-    model: "gpt-5.2",
-    // TODO
-    instructions: "",
+    model: "gpt-4o",
+    instructions: ASSISTANT_INSTRUCTIONS,
     name: "Secure Spreadsheet Analysis Tool",
     tools: [{ type: "code_interpreter" }],
   })

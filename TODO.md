@@ -1,3 +1,4 @@
+- TODO expand prompt, more explanations on using lightphe
 - не конвертировать в CSV
 - create assistant with instructions
 - add google auth and server

@@ -1,6 +1,7 @@
 import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js"
 import { mount } from './spreadsheet.js'
 import { createThread, createAndRunMessage } from './openai.js'
+import { publicKey } from './encrypt.js'
 window.addEventListener("error", (e) => {
   console.error(e);
   alert(e.message);
@@ -84,6 +85,19 @@ window.chat = chat = new quikchat("#chat", async (instance, message) => {
   if (files && Object.keys(files).length) {
     currentSpreadsheets = undefined
     renderSpreadsheetList()
+    const userMessage = message
+    message = ''
+    message += `The value for \`n\` in public key is ${publicKey.n}\n`
+    message += `The following columns are encrypted:\n`
+
+    for(let [filename, {sheets}] of Object.entries(files)) {
+      for(let [sheet, {encrypted}] of Object.entries(sheets)) {
+        message += `Filename: ${filename} Sheet: ${sheet}, Columns: ${[...encrypted]}\n`
+      }
+    }
+
+    message += userMessage
+    console.error('message', message)
   }
 
   if(threadId == null) {
@@ -91,7 +105,11 @@ window.chat = chat = new quikchat("#chat", async (instance, message) => {
     console.error({threadId})
   }
 
-  const messages = await createAndRunMessage(threadId, message, files)
+  const messages = await createAndRunMessage(
+    threadId, 
+    message, 
+    files && Object.values(files).map(f => f.encryptedFile),
+  )
   const lastMessage = messages.at(-1)
   if(lastMessage.content.length != 1) {
     console.error(lastMessage.content)
