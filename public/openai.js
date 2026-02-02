@@ -1,6 +1,26 @@
 import OpenAI from 'openai'
 
-const API_KEY = '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'
+import {decryptString} from './encrypt_api_key.js'
+
+const ENCRYPTED_API_KEY = '{"v":1,"alg":"AES-GCM","kdf":"PBKDF2-SHA256","iter":210000,"salt":"DZJlqNSgEA58aBpSDoDlgA==","iv":"klsffp8kayRuL4DE","ct":"K4kXZgqoPjX+8dGi+ooqBt/1cZ6hB0EnO4kSIulUbNQvCkJ9rqNJYjBiIDtOrfAXsW3KnAB+QD4VGACqfoMZXp7GSHZY/KSDhseWDPmUOo8NrJkma64WwZTyBuL/GLQw0WHXnSrdDxCzCcLcBNZ/jZSXdeCO/yAeCDv4KZfdP3Tg/54hzug9z61OJrkD5K+wxzaO/SzfseZZb0p/EFCU4nQ/OyOetmhQa4dsMOiXsNAlscCl"}'
+
+let API_KEY
+
+if(localStorage.API_KEY == null) {
+  while(true) {
+    const passphrase = prompt('please input a passphrase to decrypt OpenAI API KEY')
+    try {
+      API_KEY = await decryptString(ENCRYPTED_API_KEY, passphrase)
+      localStorage.API_KEY = API_KEY
+      break
+    } catch(e) {
+      alert('Bad passphrase! Try again')
+    }
+  }
+} else {
+  API_KEY = localStorage.API_KEY
+}
+
 
 const ASSISTANT_ID = 'asst_YvEKnb1xvCb57wUbgnt0QF5x'
 
