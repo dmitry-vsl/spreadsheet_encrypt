@@ -294,7 +294,6 @@ export function mount(dropZone, { onSpreadsheetsReady } = {}) {
 
     const onApply = async () => {
       // Collect selection info
-      const encryptedFiles = [];
       const selection = {};
       for (const [fileName, { sheets }] of Object.entries(state)) {
         for (const [sheetName, { selected }] of Object.entries(sheets)) {
@@ -379,11 +378,11 @@ export function mount(dropZone, { onSpreadsheetsReady } = {}) {
 
         const outData = XLSX.write(workbook, { bookType, type: "array" });
         const blob = new Blob([outData], { type: "application/octet-stream" });
-        encryptedFiles.push({ name: fileName, blob });
+        state[fileName].encryptedFile = { name: fileName, blob };
       }
 
       if (onSpreadsheetsReady) {
-        onSpreadsheetsReady(encryptedFiles);
+        onSpreadsheetsReady(state);
       }
       closeModal();
     };

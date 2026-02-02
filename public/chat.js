@@ -47,7 +47,8 @@ function renderSpreadsheetList() {
     inputArea.parentNode.insertBefore(listEl, inputArea)
   }
   listEl.innerHTML = ''
-  if (!currentSpreadsheets?.length) {
+  const fileNames = currentSpreadsheets ? Object.keys(currentSpreadsheets) : []
+  if (!fileNames.length) {
     listEl.remove()
     return
   }
@@ -55,9 +56,9 @@ function renderSpreadsheetList() {
   label.textContent = 'Attached:'
   label.style.cssText = 'font-weight: 600; color: #555;'
   listEl.appendChild(label)
-  for (const file of currentSpreadsheets) {
+  for (const name of fileNames) {
     const chip = document.createElement('span')
-    chip.textContent = file.name
+    chip.textContent = name
     chip.style.cssText = 'background: #dce6f0; padding: 2px 8px; border-radius: 4px; color: #333;'
     listEl.appendChild(chip)
   }
@@ -80,7 +81,7 @@ window.chat = chat = new quikchat("#chat", async (instance, message) => {
 
   // Grab attached spreadsheets and clear them
   const files = currentSpreadsheets
-  if (files?.length) {
+  if (files && Object.keys(files).length) {
     currentSpreadsheets = undefined
     renderSpreadsheetList()
   }
