@@ -13,7 +13,7 @@ if(localStorage.API_KEY == null) {
       API_KEY = await decryptString(ENCRYPTED_API_KEY, passphrase)
       localStorage.API_KEY = API_KEY
       break
-    } catch(e) {
+    } catch(_e) {
       alert('Bad passphrase! Try again')
     }
   }
@@ -26,7 +26,7 @@ const ASSISTANT_ID = 'asst_YvEKnb1xvCb57wUbgnt0QF5x'
 
 const ASSISTANT_INSTRUCTIONS = `You are an assistant that performs analysis of spreadsheets. Some columns in spreadsheets may be encrypted using homomorphic encryption. They can only be added using python code interpreter tool, no other operations are supported. Never read the values in this columns to the context.
 
-To work with encrypted value, first install the library: \`pip install lightphe\`. You **can** install it, the package download is possible. Do not refuse to install it.
+To work with encrypted value, first install the required libraries:: \`pip install /mnt/data/*.whl\`
 
 Then initialize the library:
 
@@ -172,15 +172,16 @@ export async function createAndRunMessage(thread_id, content, files) {
 }
 
 export async function streamCompletion(history, message, onContent, { files } = {}) {
+  const containerId = await containerIdPromise
+
   let fileIds;
   if (files?.length) {
     fileIds = await Promise.all(
       files.map(async ({ name, blob }) => {
         const file = new File([blob], name, { type: "text/csv" });
-        const uploaded = await openai.files.create({
+        const uploaded = await openai.containers.files.create(containerId, {
           file,
-          purpose: "user_data",
-        });
+        })
         return uploaded.id;
       })
     );
@@ -190,7 +191,7 @@ export async function streamCompletion(history, message, onContent, { files } = 
     ? [
         { 
           type: "code_interpreter", 
-          "container": { "type": "auto", "file_ids": fileIds }
+          "container": containerId,
         }
       ] 
     : undefined;
@@ -252,3 +253,51 @@ const result = await streamCompletion([], 'list countries from a spreadsheet', (
 })
 console.log('result', result)
 */
+
+const CONTAINER_NAME = 'spreadsheet_analyze_v2'
+
+const WHEELS = [
+  'lightecc-0.0.4-py3-none-any.whl',
+  'lightphe-0.0.20-py3-none-any.whl',
+  'mpmath-1.3.0-py3-none-any.whl',
+  'sympy-1.14.0-py3-none-any.whl',
+  'tqdm-4.67.2-py3-none-any.whl',
+]
+
+export async function ensureContainer() {
+  const containers = (await openai.containers.list()).data
+  console.log({containers})
+  let container = containers.find(c =>
+    c.name == CONTAINER_NAME && c.status == 'running'
+  )
+
+  if(container != null) {
+    console.error('container already exists', container.id)
+    return container.id
+  }
+  
+  container = await openai.containers.create({
+    name: CONTAINER_NAME,
+    "expires_after": {
+      "anchor": "last_active_at",
+      "minutes": 20,
+    }
+  })
+
+  const wheels = await Promise.all(
+    WHEELS.map(async filename => {
+      const response = await fetch('./wheels/' + filename)
+      const file = await OpenAI.toFile(response, filename)
+      console.log('file', container.id, file)
+      const cfile = await openai.containers.files.create(container.id, {
+        file,
+      })
+      return cfile
+    })
+  )
+
+  return container.id
+}
+
+// create a container eagerly
+const containerIdPromise = ensureContainer()
