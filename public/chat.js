@@ -1,6 +1,6 @@
 import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js"
 import { mount } from './spreadsheet.js'
-import { streamCompletion } from './openai.js'
+import { createThread, createAndRunMessage } from './openai.js'
 window.addEventListener("error", (e) => {
   console.error(e);
   alert(e.message);
@@ -12,6 +12,7 @@ window.addEventListener("unhandledrejection", (e) => {
 
 let chat
 let currentSpreadsheets
+let threadId
 
 function addWelcomeMessage() {
   chat.messageAddFull({
@@ -63,6 +64,7 @@ function renderSpreadsheetList() {
 }
 
 window.chat = chat = new quikchat("#chat", async (instance, message) => {
+  threadId = localStorage.threadId && parseInt(localStorage.threadId)
   const history = chat
     .historyGet()
     .filter(msg => msg.userID != 0) // drop ui-only messages
@@ -83,9 +85,20 @@ window.chat = chat = new quikchat("#chat", async (instance, message) => {
     renderSpreadsheetList()
   }
 
-  await streamCompletion(history, message, (content) => {
-    chat.messageReplaceContent(msgId, marked.parse(content))
-  }, { files });
+  if(threadId == null) {
+    threadId = await createThread()
+    console.error({threadId})
+  }
+
+  const messages = await createAndRunMessage(threadId, message, files)
+  const lastMessage = messages.at(-1)
+  if(lastMessage.content.length != 1) {
+    console.error(lastMessage.content)
+    throw new Error('unexpected content length for a message')
+  }
+  const content = lastMessage.content[0].text.value
+
+  chat.messageReplaceContent(msgId, marked.parse(content))
 
   saveHistory();
 });
@@ -115,6 +128,7 @@ document.querySelector('.quikchat-input-area').insertBefore(
 )
 clearButton.onclick = function() {
   chat.historyClear()
+  threadId = undefined
   delete localStorage.chatHistory
   currentSpreadsheets = undefined
   renderSpreadsheetList()
