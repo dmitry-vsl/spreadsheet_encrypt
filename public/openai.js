@@ -13,7 +13,7 @@ if(localStorage.API_KEY == null) {
       API_KEY = await decryptString(ENCRYPTED_API_KEY, passphrase)
       localStorage.API_KEY = API_KEY
       break
-    } catch(_e) {
+    } catch {
       alert('Bad passphrase! Try again')
     }
   }
@@ -174,20 +174,22 @@ export async function createAndRunMessage(thread_id, content, files) {
 export async function streamCompletion(history, message, onContent, { files } = {}) {
   const containerId = await containerIdPromise
 
-  let fileIds;
+  let filePaths
   if (files?.length) {
-    fileIds = await Promise.all(
+    filePaths = await Promise.all(
       files.map(async ({ name, blob }) => {
         const file = new File([blob], name, { type: "text/csv" });
         const uploaded = await openai.containers.files.create(containerId, {
           file,
         })
-        return uploaded.id;
+        return uploaded.path;
       })
-    );
+    )
+    message += '\n\nFile paths are: ' + JSON.stringify(filePaths)
   }
+  console.error({message})
 
-  const tools = fileIds?.length 
+  const tools = filePaths?.length 
     ? [
         { 
           type: "code_interpreter", 
