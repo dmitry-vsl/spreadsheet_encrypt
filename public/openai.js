@@ -171,8 +171,14 @@ export async function createAndRunMessage(thread_id, content, files) {
   }
 }
 
-export async function streamCompletion(history, message, onContent, { files } = {}) {
+export async function streamCompletion(conversationId, message, onContent, { files } = {}) {
   const containerId = await containerIdPromise
+
+  if(conversationId == null) {
+    const conversation = await openai.conversations.create()
+    console.log('conversation', conversation)
+    conversationId = conversation.id
+  }
 
   let filePaths
   if (files?.length) {
@@ -187,24 +193,22 @@ export async function streamCompletion(history, message, onContent, { files } = 
     )
     message += '\n\nFile paths are: ' + JSON.stringify(filePaths)
   }
-  console.error({message})
+  console.error('message', message)
 
-  const tools = filePaths?.length 
-    ? [
-        { 
-          type: "code_interpreter", 
-          "container": containerId,
-        }
-      ] 
-    : undefined;
+  const tools = [
+    { 
+      type: "code_interpreter", 
+      "container": containerId,
+    }
+  ] 
 
   const input = [
-    ...history,
     { role: "user", content: message },
   ];
 
   const stream = await openai.responses.create({
     model: "gpt-5.2",
+    conversation: conversationId,
     instructions: ASSISTANT_INSTRUCTIONS,
     input,
     tools,
@@ -213,6 +217,7 @@ export async function streamCompletion(history, message, onContent, { files } = 
 
   let content = "";
   for await (const event of stream) {
+    //console.debug('event', event)
     if (event.type === "response.output_text.delta") {
       content += event.delta;
       onContent(content);
@@ -221,7 +226,8 @@ export async function streamCompletion(history, message, onContent, { files } = 
       console.log('code', event.code)
     }
   }
-  return content;
+
+  return conversationId
 }
 
 /*
@@ -290,7 +296,6 @@ export async function ensureContainer() {
     WHEELS.map(async filename => {
       const response = await fetch('./wheels/' + filename)
       const file = await OpenAI.toFile(response, filename)
-      console.log('file', container.id, file)
       const cfile = await openai.containers.files.create(container.id, {
         file,
       })

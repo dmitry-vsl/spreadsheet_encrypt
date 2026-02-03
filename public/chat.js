@@ -79,14 +79,17 @@ console.log(parseAndDecrypt(`<p>Total GDP (billion USD):<br><encrypted>141238182
 `))
 */
 
+let conversationId
+
 window.chat = chat = new window.quikchat("#chat", async (instance, message) => {
-  const history = chat
-    .historyGet()
-    .filter(msg => msg.userID != 0) // drop ui-only messages
-    .map((msg) => ({
-      content: msg.content,
-      role: msg.align == "left" ? "assistant" : "user",
-    }));
+  // TODO history
+  //const history = chat
+  //  .historyGet()
+  //  .filter(msg => msg.userID != 0) // drop ui-only messages
+  //  .map((msg) => ({
+  //    content: msg.content,
+  //    role: msg.align == "left" ? "assistant" : "user",
+  //  }));
 
   // Echo user message
   instance.messageAddNew(marked.parse(message), "You", "right");
@@ -113,9 +116,9 @@ window.chat = chat = new window.quikchat("#chat", async (instance, message) => {
     console.error('message', message)
   }
 
-  await streamCompletion(
-    history, 
-    message, 
+  conversationId = await streamCompletion(
+    conversationId,
+    message,
     (content) => {
       chat.messageReplaceContent(msgId, marked.parse(parseAndDecrypt(content)))
     }, 
@@ -124,7 +127,8 @@ window.chat = chat = new window.quikchat("#chat", async (instance, message) => {
     }
   );
 
-  saveHistory();
+  // TODO history should we use history? Or get it from the backend?
+  // saveHistory();
 });
 
 const textarea = document.getElementsByTagName('textarea')[0]
@@ -133,6 +137,7 @@ const { handleSpreadsheets } = mount(textarea, {
   onSpreadsheetsReady: onSpreadsheetsAdded,
 })
 
+// TODO history
 const chatHistory = localStorage.chatHistory
 if(chatHistory) {
   chat.historyRestoreAll(JSON.parse(chatHistory))
